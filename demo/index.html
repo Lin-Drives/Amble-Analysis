@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>安步 Amble · 步态分析 Demo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 首页 / 引导 -->
+  <section id="screen-home" class="screen active">
+    <div class="hero">
+      <h1>安步 <span class="en">Amble</span></h1>
+      <p class="tagline">走两步，看懂你的步态</p>
+    </div>
+    <div class="card">
+      <h2>怎么测？</h2>
+      <ol class="steps">
+        <li>找一条约 <b>5 米</b>的直线通道，光线充足</li>
+        <li>手机固定在正前方，镜头对着你</li>
+        <li>按下开始后，<b>正面走向镜头</b>（20 秒内）</li>
+      </ol>
+      <label class="dist-row">
+        行走距离（米）
+        <input id="distance" type="number" value="5" min="1" max="20" step="0.5">
+      </label>
+      <button id="btn-camera" class="btn primary">📷 开始拍摄</button>
+      <button id="btn-upload" class="btn ghost">📁 上传本地视频（测试用）</button>
+      <input id="file-input" type="file" accept="video/*" hidden>
+      <p id="home-error" class="error" hidden></p>
+      <p class="hint">视频仅在本机分析，不会上传。</p>
+    </div>
+  </section>
+
+  <!-- 拍摄 / 分析 -->
+  <section id="screen-capture" class="screen">
+    <div id="status-bar" class="status idle">正在准备…</div>
+    <div class="video-wrap">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="capture-bottom">
+      <div id="timer" class="timer">0.0 / 20s</div>
+      <button id="btn-stop" class="btn primary small">结束并分析</button>
+      <button id="btn-cancel" class="btn ghost small">取消</button>
+    </div>
+  </section>
+
+  <!-- 报告 -->
+  <section id="screen-report" class="screen">
+    <div id="overall" class="overall">
+      <div id="overall-light" class="light"></div>
+      <div>
+        <h2 id="overall-title">步态报告</h2>
+        <p id="overall-sub"></p>
+      </div>
+    </div>
+    <div id="cards"></div>
+    <div class="card advice">
+      <h2>💡 给你的建议</h2>
+      <p id="advice-text"></p>
+    </div>
+    <p class="disclaimer">本结果为体态/步态参考信息，不构成医疗建议。<br>参考区间基于公开文献，demo 简化版。</p>
+    <button id="btn-retry" class="btn primary">再测一次</button>
+  </section>
+
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

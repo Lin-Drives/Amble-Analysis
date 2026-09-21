@@ -1,0 +1,113 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  background: linear-gradient(160deg, #F5E6D3 0%, #EFE0CE 45%, #4A9B8E 130%);
+  min-height: 100vh;
+  color: #3d3329;
+}
+
+#app { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* 首页 */
+.hero { text-align: center; padding: 32px 0 20px; }
+.hero h1 { font-size: 40px; color: #2f6d64; }
+.hero .en { font-size: 20px; color: #4A9B8E; font-weight: 500; }
+.tagline { margin-top: 8px; font-size: 17px; color: #7a6a58; }
+
+.card {
+  background: #fffaf3;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 4px 16px rgba(90, 70, 40, .12);
+  margin-bottom: 16px;
+}
+.card h2 { font-size: 20px; margin-bottom: 12px; color: #2f6d64; }
+
+.steps { padding-left: 22px; font-size: 16px; line-height: 1.9; }
+
+.dist-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 16px; margin: 18px 0;
+}
+.dist-row input {
+  width: 90px; font-size: 18px; padding: 8px 10px;
+  border: 2px solid #d8c6ac; border-radius: 10px; text-align: center;
+  background: #fff;
+}
+
+.btn {
+  display: block; width: 100%; border: none; cursor: pointer;
+  font-size: 18px; font-weight: 600; padding: 15px;
+  border-radius: 14px; margin-top: 12px;
+}
+.btn.primary { background: #4A9B8E; color: #fff; }
+.btn.primary:active { background: #3d857a; }
+.btn.ghost { background: transparent; color: #4A9B8E; border: 2px solid #4A9B8E; }
+.btn.small { width: auto; padding: 10px 18px; font-size: 15px; margin-top: 0; }
+
+.hint { margin-top: 14px; font-size: 13px; color: #a08d76; text-align: center; }
+.error { margin-top: 12px; color: #c0392b; font-size: 15px; }
+
+/* 拍摄页 */
+.status {
+  text-align: center; font-size: 17px; font-weight: 600;
+  padding: 12px; border-radius: 12px; margin-bottom: 12px;
+  background: #eee2d0; color: #7a6a58;
+  position: sticky; top: 8px; z-index: 5;
+}
+.status.ok { background: #d9efe9; color: #2f6d64; }
+.status.warn { background: #fdeec9; color: #9a7b1e; }
+.status.bad { background: #fbdcd4; color: #b03a2e; }
+
+.video-wrap { position: relative; width: 100%; border-radius: 18px; overflow: hidden; background: #222; }
+.video-wrap video { display: block; width: 100%; height: auto; }
+.video-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.capture-bottom {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 14px; justify-content: space-between;
+}
+.timer { font-size: 20px; font-weight: 700; color: #2f6d64; font-variant-numeric: tabular-nums; }
+
+/* 报告页 */
+.overall {
+  display: flex; align-items: center; gap: 16px;
+  background: #fffaf3; border-radius: 20px; padding: 20px;
+  box-shadow: 0 4px 16px rgba(90, 70, 40, .12); margin-bottom: 16px;
+}
+.overall h2 { font-size: 22px; }
+.overall p { color: #7a6a58; margin-top: 4px; font-size: 15px; }
+.light { width: 44px; height: 44px; border-radius: 50%; flex: none; box-shadow: inset 0 -4px 8px rgba(0,0,0,.2); }
+.light.green { background: #48b36a; }
+.light.yellow { background: #f0b429; }
+.light.red { background: #e05a47; }
+
+.metric {
+  background: #fffaf3; border-radius: 16px; padding: 16px 18px;
+  margin-bottom: 12px; box-shadow: 0 2px 10px rgba(90, 70, 40, .1);
+}
+.metric-head { display: flex; justify-content: space-between; align-items: baseline; }
+.metric-head h3 { font-size: 17px; }
+.metric-val { font-size: 26px; font-weight: 700; }
+.metric-val small { font-size: 14px; font-weight: 400; color: #a08d76; }
+
+.band {
+  display: flex; height: 10px; border-radius: 5px; overflow: hidden;
+  margin: 12px 0 6px; position: relative;
+}
+.band span { flex: 1; }
+.band .seg-r { background: #f3c1b8; }
+.band .seg-y { background: #f7dfae; }
+.band .seg-g { background: #bfe3cf; }
+.band .seg-r.on { background: #e05a47; }
+.band .seg-y.on { background: #f0b429; }
+.band .seg-g.on { background: #48b36a; }
+.band-note { font-size: 12px; color: #a08d76; }
+.metric p.explain { margin-top: 8px; font-size: 15px; color: #6d5f4e; }
+
+.advice p { font-size: 17px; line-height: 1.7; }
+.disclaimer { font-size: 13px; color: #8d7c67; text-align: center; line-height: 1.7; margin: 8px 0 16px; }
