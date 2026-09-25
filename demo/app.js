@@ -83,6 +83,20 @@ async function startCamera() {
 }
 
 // ---- 上传视频模式 ----
+// 根据 play() 拒绝原因 / video.error 给出可操作的提示
+function fileErrorText(e) {
+  const code = video.error && video.error.code; // 4 = MEDIA_ERR_SRC_NOT_SUPPORTED
+  const name = e && e.name;
+  console.error("视频加载/播放失败:", name, e && e.message, "mediaErrorCode:", code);
+  if (name === "NotAllowedError") {
+    return "浏览器拦截了自动播放，请再点一次「上传本地视频」重试。";
+  }
+  // NotSupportedError / code 4 / 其他：多半是编码格式问题
+  return "浏览器无法解码该视频（最常见原因：iPhone「高效」模式录的是 H.265/HEVC，桌面版 Chrome/Edge 不支持）。"
+    + "可任选其一：① 改用 Safari 打开本页重试；② 手机设置 → 相机 → 格式 → 改为「兼容性最佳」后重拍；"
+    + "③ 把视频转成 MP4/H.264 后再上传。";
+}
+
 function startFile(file) {
   homeError("");
   const url = URL.createObjectURL(file);
@@ -91,11 +105,12 @@ function startFile(file) {
   video.onerror = () => {
     stopAnalysis();
     show("home");
-    homeError("视频无法解码，请换一个文件（建议 MP4/H.264）。");
+    homeError(fileErrorText(null));
+    URL.revokeObjectURL(url);
   };
   video.onended = () => { if (analyzing) finishAnalysis(); };
   video.play().then(() => { mode = "file"; beginAnalysis(); })
-    .catch(() => homeError("视频播放失败，请换一个文件。"));
+    .catch((e) => { homeError(fileErrorText(e)); URL.revokeObjectURL(url); });
 }
 
 // ---- 分析主循环（两种模式共用）----
