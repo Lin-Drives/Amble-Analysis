@@ -1,11 +1,11 @@
 // 安步 Amble · 步态分析 Demo (W1)
 // MediaPipe PoseLandmarker + 正面视角 2D 关键点指标，纯端侧，无后端。
-import { PoseLandmarker, FilesetResolver } from
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+import { PoseLandmarker, FilesetResolver } from "./vendor/vision_bundle.mjs";
 
 const MODEL_LOCAL = "models/pose_landmarker_lite.task";
 const MODEL_REMOTE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
-const WASM_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const WASM_LOCAL = "wasm";
+const WASM_REMOTE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MAX_SECONDS = 20;
 
 // ---- DOM ----
@@ -37,23 +37,33 @@ function homeError(msg) {
   el.textContent = msg; el.hidden = !msg;
 }
 
-// ---- 模型加载（本地优先，失败回退公网 URL）----
+// ---- 模型加载（本地 wasm+本地模型优先，逐级回退公网）----
 async function initLandmarker() {
   if (landmarker) return landmarker;
   setStatus("正在加载姿态模型…", "idle");
-  const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
-  const opts = (asset) => ({
+  const mkOpts = (asset) => ({
     baseOptions: { modelAssetPath: asset },
     runningMode: "VIDEO", numPoses: 1,
     minPoseDetectionConfidence: 0.4, minTrackingConfidence: 0.4,
   });
-  try {
-    landmarker = await PoseLandmarker.createFromOptions(vision, opts(MODEL_LOCAL));
-  } catch (e) {
-    console.warn("本地模型加载失败，回退公网 URL", e);
-    landmarker = await PoseLandmarker.createFromOptions(vision, opts(MODEL_REMOTE));
+  const attempts = [
+    [WASM_LOCAL, MODEL_LOCAL],
+    [WASM_REMOTE, MODEL_LOCAL],
+    [WASM_REMOTE, MODEL_REMOTE],
+  ];
+  let lastErr = null;
+  for (const [wasm, model] of attempts) {
+    try {
+      const vision = await FilesetResolver.forVisionTasks(wasm);
+      landmarker = await PoseLandmarker.createFromOptions(vision, mkOpts(model));
+      console.log("姿态模型加载成功：wasm=" + wasm + ", model=" + model);
+      return landmarker;
+    } catch (e) {
+      console.warn("模型加载失败（wasm=" + wasm + ", model=" + model + "），尝试下一来源", e);
+      lastErr = e;
+    }
   }
-  return landmarker;
+  throw lastErr;
 }
 
 // ---- 摄像头模式 ----
@@ -109,8 +119,20 @@ function startFile(file) {
     URL.revokeObjectURL(url);
   };
   video.onended = () => { if (analyzing) finishAnalysis(); };
-  video.play().then(() => { mode = "file"; beginAnalysis(); })
-    .catch((e) => { homeError(fileErrorText(e)); URL.revokeObjectURL(url); });
+  // 关键：先等模型就绪再开始播放。
+  // 否则短视频（如 5 秒）可能在模型加载期间就放完了，采样不足被误判「测量失败」。
+  initLandmarker()
+    .then(() => video.play())
+    .then(() => { mode = "file"; beginAnalysis(); })
+    .catch((e) => {
+      show("home");
+      if (e && (e.name === "NotSupportedError" || e.name === "NotAllowedError")) {
+        homeError(fileErrorText(e));
+      } else {
+        homeError("姿态模型加载失败：" + (e && e.message || "网络异常") + "，请检查网络后刷新重试。");
+      }
+      URL.revokeObjectURL(url);
+    });
 }
 
 // ---- 分析主循环（两种模式共用）----
@@ -208,7 +230,7 @@ function computeMetrics(samples, distanceM) {
   const valid = samples.filter(s => s.lm && vis(s.lm[11]) > 0.4 && vis(s.lm[12]) > 0.4);
   const dur = samples.length ? samples[samples.length - 1].t : 0;
   if (valid.length < 15 || dur < 2) {
-    return { failed: true, reason: "未检测到足够的人体画面，请在光线充足处让全身入镜后重试。" };
+    return { failed: true, reason: `未检测到足够的人体画面（有效帧 ${valid.length}/${samples.length}）。请在光线充足处让全身入镜、距离镜头 3–5 米后重试。` };
   }
   const t = valid.map(s => s.t);
   const durValid = t[t.length - 1] - t[0] || dur;

@@ -6,3 +6,7 @@ gait_analysis_elderly_project.md
 
 # macOS 系统文件
 .DS_Store
+
+# 本地测试视频（私人影像，不上传）
+demo/test/
+
