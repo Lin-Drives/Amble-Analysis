@@ -18,6 +18,21 @@ let landmarker = null;
 let analyzing = false, rafId = 0, startTs = 0, samples = [];
 let mediaRecorder = null, recordedChunks = [];
 let mode = "camera"; // "camera" | "file"
+let replayURL = null; // 报告页回看用的临时视频 URL
+
+// ---- 报告页视频回看 / 临时保存 ----
+function setReplay(url, mime) {
+  if (replayURL && replayURL !== url) URL.revokeObjectURL(replayURL);
+  replayURL = url;
+  const card = $("replay-card");
+  if (!url) { card.hidden = true; return; }
+  $("replay-video").src = url;
+  const ext = mime && mime.includes("mp4") ? "mp4" : "webm";
+  const a = $("btn-download");
+  a.href = url;
+  a.download = "amble-gait-" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + "." + ext;
+  card.hidden = false;
+}
 
 // 骨架连线（MediaPipe 33 关键点索引）
 const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],
@@ -123,7 +138,7 @@ function startFile(file) {
   // 否则短视频（如 5 秒）可能在模型加载期间就放完了，采样不足被误判「测量失败」。
   initLandmarker()
     .then(() => video.play())
-    .then(() => { mode = "file"; beginAnalysis(); })
+    .then(() => { mode = "file"; setReplay(url, file.type); beginAnalysis(); })
     .catch((e) => {
       show("home");
       if (e && (e.name === "NotSupportedError" || e.name === "NotAllowedError")) {
@@ -169,7 +184,16 @@ function loop() {
 function stopAnalysis() {
   analyzing = false;
   cancelAnimationFrame(rafId);
-  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    // 录制停止后生成回看视频（数据在 stop 事件中才完整落盘）
+    mediaRecorder.onstop = () => {
+      if (recordedChunks.length && mode === "camera") {
+        const mime = mediaRecorder.mimeType || "video/webm";
+        setReplay(URL.createObjectURL(new Blob(recordedChunks, { type: mime })), mime);
+      }
+    };
+    mediaRecorder.stop();
+  }
   if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
   video.pause();
 }
@@ -282,16 +306,37 @@ function rate(m) {
   return r;
 }
 
+// scale: 仪表条量程；zones: 与 rate() 阈值一致的红黄绿区间；trend: 方向提示
 const METRIC_META = [
   { key: "speed", name: "步速", fmt: m => m.speed.toFixed(2), unit: "m/s",
+    val: m => m.speed, scale: [0, 2], trend: "越快越好",
+    zones: [[0, 1.0, "r"], [1.0, 1.2, "y"], [1.2, 2, "g"]],
     explain: "步行速度反映整体活动能力与身体机能。" },
   { key: "cadence", name: "步频", fmt: m => m.cadence, unit: "步/分",
+    val: m => m.cadence, scale: [40, 160], trend: "太快太慢都不好，中间绿色段最稳",
+    zones: [[40, 80, "r"], [80, 90, "y"], [90, 115, "g"], [115, 125, "y"], [125, 160, "r"]],
     explain: "每分钟迈出的步数，节奏稳定很重要。" },
   { key: "symmetry", name: "左右对称性", fmt: m => Math.round(m.symmetry), unit: "%",
+    val: m => m.symmetry, scale: [50, 100], trend: "越接近 100% 越好",
+    zones: [[50, 80, "r"], [80, 90, "y"], [90, 100, "g"]],
     explain: "左右脚摆动幅度是否均衡，越接近 100% 越好。" },
   { key: "sway", name: "躯干摇晃", fmt: m => (m.sway * 100).toFixed(0), unit: "%肩宽",
+    val: m => m.sway, scale: [0, 0.5], trend: "越小越稳（绿色在左侧）",
+    zones: [[0, 0.15, "g"], [0.15, 0.30, "y"], [0.30, 0.5, "r"]],
     explain: "走路时上身左右晃动的幅度，越小越稳。" },
 ];
+
+const ZONE_COLOR = { r: "#e05a47", y: "#f0b429", g: "#48b36a" };
+function gaugeHTML(meta, m) {
+  const [sMin, sMax] = meta.scale, span = sMax - sMin;
+  const stops = meta.zones.map(([a, b, z]) => {
+    const pa = ((a - sMin) / span * 100).toFixed(1), pb = ((b - sMin) / span * 100).toFixed(1);
+    return `${ZONE_COLOR[z]} ${pa}%, ${ZONE_COLOR[z]} ${pb}%`;
+  }).join(", ");
+  const pct = Math.min(100, Math.max(0, (meta.val(m) - sMin) / span * 100));
+  return `<div class="gauge" style="background:linear-gradient(90deg, ${stops})">
+    <div class="gauge-marker" style="left:${pct}%"></div></div>`;
+}
 const ADVICE = {
   sway: "躯干晃动偏大：试试每天靠墙站 2 分钟——后脑、肩胛、臀部贴墙，轻轻收下巴。",
   symmetry: "左右不太对称：注意两侧均衡用力，可扶椅背做单腿站立练习，每侧 30 秒。",
@@ -327,12 +372,8 @@ function renderReport(m) {
     div.innerHTML =
       `<div class="metric-head"><h3>${meta.name}</h3>
        <div class="metric-val">${meta.fmt(m)} <small>${meta.unit}</small></div></div>
-       <div class="band">
-         <span class="seg-r${c === "red" ? " on" : ""}"></span>
-         <span class="seg-y${c === "yellow" ? " on" : ""}"></span>
-         <span class="seg-g${c === "green" ? " on" : ""}"></span>
-       </div>
-       <div class="band-note">当前：${COLORS[c]}灯区间</div>
+       ${gaugeHTML(meta, m)}
+       <div class="band-note">当前：${COLORS[c]}灯 · ${meta.trend}</div>
        <p class="explain">${meta.explain}</p>`;
     cards.appendChild(div);
   }
@@ -347,5 +388,8 @@ $("file-input").addEventListener("change", (e) => {
   e.target.value = "";
 });
 $("btn-stop").addEventListener("click", () => { if (analyzing) finishAnalysis(); });
-$("btn-cancel").addEventListener("click", () => { stopAnalysis(); show("home"); });
+$("btn-cancel").addEventListener("click", () => { recordedChunks = []; stopAnalysis(); show("home"); });
 $("btn-retry").addEventListener("click", () => { show("home"); });
+
+// 调试/自动化测试钩子
+window.__amble = { renderReport, computeMetrics, setReplay };

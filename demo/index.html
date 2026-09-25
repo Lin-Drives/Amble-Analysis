@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>安步 Amble · 步态分析 Demo</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <div id="app">
@@ -62,11 +62,17 @@
       <h2>💡 给你的建议</h2>
       <p id="advice-text"></p>
     </div>
+    <div id="replay-card" class="card replay" hidden>
+      <h2>🎬 本次视频</h2>
+      <video id="replay-video" controls playsinline></video>
+      <a id="btn-download" class="btn ghost" download>⬇️ 保存到本地</a>
+      <p class="hint">视频只临时保存在本机浏览器里，刷新页面后会消失；想留存请点击保存。</p>
+    </div>
     <p class="disclaimer">本结果为体态/步态参考信息，不构成医疗建议。<br>参考区间基于公开文献，demo 简化版。</p>
     <button id="btn-retry" class="btn primary">再测一次</button>
   </section>
 
 </div>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>
